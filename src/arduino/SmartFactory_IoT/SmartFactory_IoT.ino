@@ -1,6 +1,6 @@
 /******************************************************************************************
- * FileName     : SmartLight_iot.ino
- * Description  : 이티보드 스마트 가로등 코딩 키트(IoT)
+ * FileName     : SmartFactory_IoT.ino
+ * Description  : 이티보드 스마트 팩토리 코딩 키트(IoT)
  * Author       : SCS
  * Created Date : 2022.08.06
  * Reference    : 
@@ -30,8 +30,12 @@ APP_CONFIG app;
 //==========================================================================================
 int TRIG = D9;                                    // 초음파 송신 핀
 int ECHO = D8;                                    // 초음파 수신 핀
-int brightness_value;                             // 조도 센서 값(밝기)
+int RESET_PIN = D7;                     // 카운트 리셋핀 (D7 = 파란 버튼)
+
+int Count = 0;                          // 카운터용 변수
 float distance_value;                             // 초음파 센서 값(거리)
+char temp_buffer[255] = {0, };          // 포멧팅용 임시 버퍼
+int pre_time = 0;                       // 이전에 물건이 지나간 시간
 
 
 //==========================================================================================
@@ -41,8 +45,11 @@ void setup()                                      // 설정 함수
 //------------------------------------------------------------------------------------------
 {
   app.setup();                                    // 응용 프로그램 기본 설정
-
+  
   custom_setup();                                 // 사용자 맞춤형 설정
+  app.oled.setup();
+  
+  oled_show(Count);
 }
 
 
@@ -57,6 +64,9 @@ void custom_setup()                               // 사용자 맞춤형 설정 
   //----------------------------------------------------------------------------------------
   pinMode(TRIG, OUTPUT);                          // 초음파 송신 핀을 출력 모드로 설정
   pinMode(ECHO, INPUT);                           // 초음파 수신 핀을 입력 모드로 설정
+  pinMode(RESET_PIN, INPUT);            // 리셋버튼, 핀모드설정
+  pinMode(SDA, INPUT);
+  pinMode(SCL, INPUT);     
 }
 
 
@@ -110,25 +120,16 @@ void loop()                                       // 반복 루틴
 //==========================================================================================
 void do_sensing_process()                         // 센싱 처리 함수
 //==========================================================================================
-{
-  
-  //----------------------------------------------------------------------------------------
-  // 조도 값 센싱하기; CDS 센서
-  //----------------------------------------------------------------------------------------  
-  brightness_value = analogRead(A3);              // 조도 센서 읽기
-
+{ 
   //----------------------------------------------------------------------------------------
   // 거리 값 센싱하기; 초음파 센서
   //----------------------------------------------------------------------------------------  
-  pinMode(TRIG, OUTPUT);                          // TRIG 핀을 출력 모드로 설정
-  pinMode(ECHO, INPUT);                           // ECHO 핀을 입력 모드로 설정
   delay(10);                                      // 10/1000초 만큼 대기
   
   //----------------------------------------------------------------------------------------
   // 초음파 측정
   //----------------------------------------------------------------------------------------  
   digitalWrite(TRIG, LOW);
-  digitalWrite(ECHO, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG, HIGH);
   delayMicroseconds(10);
@@ -139,8 +140,20 @@ void do_sensing_process()                         // 센싱 처리 함수
   //----------------------------------------------------------------------------------------  
   float duration = pulseIn (ECHO, HIGH);      
   distance_value = duration * 17 / 1000;  
+  //Serial.println(distance_value);
 }
 
+//==========================================================================================
+void oled_show(int Count)
+//==========================================================================================
+{
+  delay(10);
+  sprintf(temp_buffer, "count : %d", Count);
+  app.oled.setLine(1, "*Smart Factory");
+  app.oled.setLine(2, temp_buffer);
+  app.oled.setLine(3, "-------------");
+  app.oled.display();
+}
 
 //==========================================================================================
 void do_automatic_process()                       // 자동화 처리 함수
@@ -154,25 +167,25 @@ void do_automatic_process()                       // 자동화 처리 함수
   pinMode(D2, OUTPUT);                            // D2핀을 출력 모드로 설정
   pinMode(D3, OUTPUT);                            // D3핀을 출력 모도로 설정
   
-  if (brightness_value < 1000) {                  // 밝기가 1000 미만이면
-    digitalWrite(D3, HIGH);                       // D3핀을 켜기
-    app.dg_Write(D3, HIGH);                       // D3핀 값 저장하기
-    
-    if (distance_value < 8) {                     // 거리가 8cm 미만이면
-      digitalWrite(D2, HIGH);                     // D2핀을 켜기
-      app.dg_Write(D2, HIGH);                     // D2핀 값 저장하기
+  if(distance_value < 30)
+  {
+    int now_time = millis();
+    if(now_time - pre_time > 500)
+    {
+      Count += 1;
+
+      oled_show(Count);
+      delay(1000);
+
+      pre_time = now_time;
     }
-    else {                                        // 그렇지 않으면
-      digitalWrite(D2, LOW);                      // D2핀을 끄기
-      app.dg_Write(D2, LOW);                      // D2핀 값 저장하기
-    }
-    
   }
-  else {                                          // 그렇지 않으면
-    digitalWrite(D2, LOW);                        // D2핀 끄기
-    app.dg_Write(D2, LOW);                        // D2핀 값 저장하기
-    digitalWrite(D3, LOW);                        // D3핀을 끄기
-    app.dg_Write(D3, LOW);                        // D3핀 값 저장하기
+
+  if(digitalRead(RESET_PIN) == LOW)
+  {
+    Serial.println("reset count");
+    Count = 0;
+    oled_show(Count);
   }
 }
 
@@ -184,8 +197,7 @@ void send_sensor_value()                          // 센서 값 송신 함수
   // 예시 {"distance":88.08,"brightness":2914}
   
   DynamicJsonDocument doc(256);                   // json 
-  doc["distance"] = app.etboard.round2(distance_value); // 거리 값 송신, 소수점 2자리
-  doc["brightness"] = brightness_value;           // 조도 값 송신
+  doc["Count"] = Count; // 거리 값 송신, 소수점 2자리
 
   String output;                                  // 문자열 변수
   serializeJson(doc, output);                     // json을 문자열로 변환
