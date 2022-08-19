@@ -8,7 +8,7 @@
  * Modified     : 
 ******************************************************************************************/
 const char* board_hardware_verion = "ETBoard_V1.1";
-const char* board_firmware_verion = "smartLgt_0.91";
+const char* board_firmware_verion = "smartFactory_0.91";
 
 //================================================-=========================================
 // 응용 프로그램 구성 사용하기                       
@@ -49,7 +49,7 @@ void setup()                                      // 설정 함수
   custom_setup();                                 // 사용자 맞춤형 설정
   app.oled.setup();
   
-  oled_show(Count);
+  oled_show(Count);                               // OLED 기본 설정
 }
 
 
@@ -157,27 +157,25 @@ void do_automatic_process()                       // 자동화 처리 함수
   //----------------------------------------------------------------------------------------  
   // 스마트 펙토리 시스템
   //----------------------------------------------------------------------------------------  
-  pinMode(D2, OUTPUT);                            // D2핀을 출력 모드로 설정
-  pinMode(D3, OUTPUT);                            // D3핀을 출력 모도로 설정
-  
-  if(distance_value < 30)
+
+  if(distance_value < 30)                         // 물체 거리가 30cm 이하
   {
     int now_time = millis();
     if(now_time - pre_time > 500)
     {
-      Count += 1;
+      Count += 1;                                 // 물체가 지나가면  Count 1증가
 
-      oled_show(Count);
+      oled_show(Count);                           // OLED 에 Count 변수 값 표시
       delay(1000);
 
       pre_time = now_time;
     }
   }
 
-  if(digitalRead(RESET_PIN) == LOW)
+  if(digitalRead(RESET_PIN) == LOW)               // 파란 버튼이 눌러지면 초기화
   {
     Serial.println("reset count");
-    Count = 0;
+    Count = 0;                                    // Count 0으로 초기화
     oled_show(Count);
   }
 }
