@@ -2,9 +2,9 @@
  * FileName     : SmartFactory_IoT.ino
  * Description  : 이티보드 스마트 팩토리 코딩 키트(IoT)
  * Author       : SCS
- * Created Date : 2022.08.06
+ * Created Date : 2022.08.18
  * Reference    : 
- * Modified     : 2022.08.10 : SCS
+ * Modified     : 2022.08.19 : LCS
  * Modified     : 
 ******************************************************************************************/
 const char* board_hardware_verion = "ETBoard_V1.1";
@@ -30,12 +30,12 @@ APP_CONFIG app;
 //==========================================================================================
 int TRIG = D9;                                    // 초음파 송신 핀
 int ECHO = D8;                                    // 초음파 수신 핀
-int RESET_PIN = D7;                     // 카운트 리셋핀 (D7 = 파란 버튼)
+int RESET_PIN = D7;                               // 카운트 리셋핀 (D7 = 파란 버튼)
 
-int Count = 0;                          // 카운터용 변수
+int Count = 0;                                    // 카운터용 변수
 float distance_value;                             // 초음파 센서 값(거리)
-char temp_buffer[255] = {0, };          // 포멧팅용 임시 버퍼
-int pre_time = 0;                       // 이전에 물건이 지나간 시간
+char temp_buffer[255] = {0, };                    // 포멧팅용 임시 버퍼
+int pre_time = 0;                                 // 이전에 물건이 지나간 시간
 
 
 //==========================================================================================
@@ -64,8 +64,9 @@ void custom_setup()                               // 사용자 맞춤형 설정 
   //----------------------------------------------------------------------------------------
   pinMode(TRIG, OUTPUT);                          // 초음파 송신 핀을 출력 모드로 설정
   pinMode(ECHO, INPUT);                           // 초음파 수신 핀을 입력 모드로 설정
-  pinMode(RESET_PIN, INPUT);            // 리셋버튼, 핀모드설정
-  pinMode(SDA, INPUT);
+  pinMode(RESET_PIN, INPUT);                      // 리셋버튼, 핀모드설정
+
+  pinMode(SDA, INPUT);                            // OLED 핀 모드 설정
   pinMode(SCL, INPUT);     
 }
 
@@ -75,7 +76,6 @@ void loop()                                       // 반복 루틴
 //==========================================================================================
 //  (권장 사항) 이 함수를 가능하면 수정하지 마십시오 !!! 
 //  do_sensing_process(), do_automatic_process(), send_sensor_value(), 
-//  send_digital_output_value()를 수정하십시오.
 //------------------------------------------------------------------------------------------
 {
   //----------------------------------------------------------------------------------------
@@ -99,16 +99,9 @@ void loop()                                       // 반복 루틴
   // 주기적으로 메시지 전송 처리
   //----------------------------------------------------------------------------------------
   if (millis() - app.lastMillis > NORMAL_SEND_INTERVAL) {  
-    send_sensor_value();                        // 센서 값 송신
-    app.lastMillis = millis();                  // 현재 시각 업데이트
+    send_sensor_value();                          // 센서 값 송신
+    app.lastMillis = millis();                    // 현재 시각 업데이트
   }  
-
-  //----------------------------------------------------------------------------------------
-  // 디지털 값이 변경되었으면 바로 송신
-  //----------------------------------------------------------------------------------------    
-  if (app.isChanged_digital_value() == true) {   // 디지털 값이 변경 여부
-    send_digital_output_value();                 // 디지털 출력 값 송신
-  }
 
   //----------------------------------------------------------------------------------------
   // 동작 상태 LED 깜밖이기
@@ -149,9 +142,9 @@ void oled_show(int Count)
 {
   delay(10);
   sprintf(temp_buffer, "count : %d", Count);
-  app.oled.setLine(1, "*Smart Factory");
-  app.oled.setLine(2, temp_buffer);
-  app.oled.setLine(3, "-------------");
+  app.oled.setLine(1, "*Smart Factory");          // OLED 첫 번째 줄 : 시스템 이름
+  app.oled.setLine(2, temp_buffer);               // OLED 두 번째 줄 : 지나간 물체 갯수
+  app.oled.setLine(3, "-------------");           // OLED 세 번째 줄 : ---------------
   app.oled.display();
 }
 
@@ -162,7 +155,7 @@ void do_automatic_process()                       // 자동화 처리 함수
 //------------------------------------------------------------------------------------------
 {  
   //----------------------------------------------------------------------------------------  
-  // 가로등 모듈의 LED 제어
+  // 스마트 펙토리 시스템
   //----------------------------------------------------------------------------------------  
   pinMode(D2, OUTPUT);                            // D2핀을 출력 모드로 설정
   pinMode(D3, OUTPUT);                            // D3핀을 출력 모도로 설정
@@ -194,36 +187,15 @@ void do_automatic_process()                       // 자동화 처리 함수
 void send_sensor_value()                          // 센서 값 송신 함수
 //==========================================================================================
 { 
-  // 예시 {"distance":88.08,"brightness":2914}
+  // 예시 {"Count":18}
   
   DynamicJsonDocument doc(256);                   // json 
-  doc["Count"] = Count; // 거리 값 송신, 소수점 2자리
+  doc["Count"] = Count;                           // 지나간 물체 갯수
 
   String output;                                  // 문자열 변수
   serializeJson(doc, output);                     // json을 문자열로 변환
   app.mqtt.publish_tele("/sensor", output);       // 송신
 }
-
-
-//==========================================================================================
-void send_digital_output_value()                  // 디지털 출력 값 송신 함수
-//==========================================================================================
-{
-  // 예시 {"D2":0,"D3":0}
-  
-  DynamicJsonDocument doc(256);                   // json 
-  doc["D2"] = app.dg_Read(D2);                    // D2 핀 값
-  doc["D3"] = app.dg_Read(D3);                    // D3 핀 값
-
-  String output;                                  // 문자열 변수
-  serializeJson(doc, output);                     // json을 문자열로 변환
-  app.mqtt.publish_tele("/digital_output", output);  // 송신
-  
-  app.update_digital_value();
-  
-  delay(100);
-}
-
 
 //==========================================================================================
 void onConnectionEstablished()                    // MQTT 연결되었을 때 동작하는 함수
