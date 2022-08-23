@@ -45,9 +45,7 @@ void setup()                                      // 설정 함수
 //------------------------------------------------------------------------------------------
 {
   app.setup();                                    // 응용 프로그램 기본 설정
-  
   custom_setup();                                 // 사용자 맞춤형 설정
-  app.oled.setup();
   
   oled_show(Count);                               // OLED 기본 설정
 }
@@ -64,10 +62,6 @@ void custom_setup()                               // 사용자 맞춤형 설정 
   //----------------------------------------------------------------------------------------
   pinMode(TRIG, OUTPUT);                          // 초음파 송신 핀을 출력 모드로 설정
   pinMode(ECHO, INPUT);                           // 초음파 수신 핀을 입력 모드로 설정
-  pinMode(RESET_PIN, INPUT);                      // 리셋버튼, 핀모드설정
-
-  pinMode(SDA, INPUT);                            // OLED 핀 모드 설정
-  pinMode(SCL, INPUT);     
 }
 
 
