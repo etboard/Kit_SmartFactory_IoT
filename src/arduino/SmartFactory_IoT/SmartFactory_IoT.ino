@@ -170,7 +170,7 @@ void do_automatic_process()                       // 자동화 처리 함수
   {
     Serial.println("reset count");
     Count = 0;                                    // Count 0으로 초기화
-    oled_show(Count);
+    oled_show(Count);                             // OLED 에 Count 변수 값 표시
   }
 }
 
@@ -180,7 +180,6 @@ void send_sensor_value()                          // 센서 값 송신 함수
 //==========================================================================================
 { 
   // 예시 {"Count":18}
-  
   DynamicJsonDocument doc(256);                   // json 
   doc["Count"] = Count;                           // 지나간 물체 갯수
 
